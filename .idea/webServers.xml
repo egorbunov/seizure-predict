@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="9bcc3543-97c9-473d-8845-60ce101f7843" name="kaggle-cloud-vm" url="http://104.197.52.12">
+        <fileTransfer host="104.197.52.12" port="22" privateKey="$USER_HOME$/.ssh/my-ssh-key" rootFolder="/home/eg" accessType="SFTP" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
