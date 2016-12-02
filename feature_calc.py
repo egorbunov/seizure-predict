@@ -8,8 +8,8 @@ matplotlib.use("Agg")
 
 
 def calc_one_patient(patient_no, train=True, test=True):
-    features_train_dir = "../data/features2/train"
-    features_test_dir = "../data/features2/test"
+    features_train_dir = "../data/features3/train"
+    features_test_dir = "../data/features3/test"
     if not os.path.exists(features_train_dir):
         os.makedirs(features_train_dir)
     if not os.path.exists(features_test_dir):
