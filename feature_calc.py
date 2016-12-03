@@ -1,32 +1,32 @@
 import matplotlib
-from seiz.feature_calculator import FeatureCalculator
-import os
-import pickle
+
+from seiz.data_read import MatPatientDataReader
+from seiz.feature_io import FeatureIO
+from seiz.segmented_feature_calc import SegmentedFeatureCalculator
 
 # because of ssh
 matplotlib.use("Agg")
 
 
 def calc_one_patient(patient_no, train=True, test=True):
-    features_train_dir = "../data/features3/train"
-    features_test_dir = "../data/features3/test"
-    if not os.path.exists(features_train_dir):
-        os.makedirs(features_train_dir)
-    if not os.path.exists(features_test_dir):
-        os.makedirs(features_test_dir)
-    fc = FeatureCalculator(patient_no, data_dir="../data")
+    feat_dir = "../data/seg_features_4"
+    data_reader = MatPatientDataReader(patient_no=patient_no, data_dir="../data")
+    fc = SegmentedFeatureCalculator(data_reader)
+    fio = FeatureIO(feat_dir)
     if train:
-        print("Calculating train features...")
-        features_train = fc.calc_train_features()
-        features_train_file = os.path.join(features_train_dir, "{}.pcl".format(patient_no))
-        with open(features_train_file, "wb") as f:
-            pickle.dump(features_train, f)
+        for seg_len in [1, 2, 4, 5, 6, 10]:
+            print("Calculating train features, segment len = {}".format(seg_len))
+            features_train = fc.calc_train_features(seg_len)
+            print("Writing...")
+            fio.write(features_train)
+        print("OK")
     if test:
-        print("Calculating test features...")
-        features_test = fc.calc_test_features()
-        features_test_file = os.path.join(features_test_dir, "{}.pcl".format(patient_no))
-        with open(features_test_file, "wb") as f:
-            pickle.dump(features_test, f)
+        for seg_len in [1, 2, 4, 5, 6, 10]:
+            print("Calculating train features, segment len = {}".format(seg_len))
+            features_test = fc.calc_test_features(seg_len)
+            print("Writing...")
+            fio.write(features_test)
+        print("OK")
 
 
 def main(patient_no=None, train=True, test=True):
@@ -43,7 +43,6 @@ def main(patient_no=None, train=True, test=True):
 
 if __name__ == "__main__":
     import sys
-
     if len(sys.argv) == 1:
         main()
     else:

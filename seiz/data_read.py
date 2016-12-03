@@ -1,17 +1,24 @@
 import pandas as pd
 from scipy.io import loadmat
 import os
+import numpy as np
 
 
 def _get_df(mat_file_name):
+    """
+    Returns dict with keys:
+        * signals -- electrode signals pandas dataframe
+        * sampling_rate -- number of measurements per second
+    """
     try:
         mat = loadmat(mat_file_name)
     except ValueError as e:
-        print("value error in mat file")
-        return None
+        print("value error for mat filguppye {}".format(mat_file_name))
+        return {'signals': None, 'sampling_rate': None}
     names = mat['dataStruct'].dtype.names
     n_data = {n: mat['dataStruct'][n][0, 0] for n in names}
-    return pd.DataFrame(n_data['data'], columns=n_data['channelIndices'][0])
+    return {'signals': pd.DataFrame(n_data['data'], columns=n_data['channelIndices'][0]),
+            'sampling_rate': mat['dataStruct']['iEEGsamplingRate'][0, 0][0, 0]}
 
 
 class MatPatientDataReader:
@@ -39,11 +46,27 @@ class MatPatientDataReader:
         interm = ((os.path.splitext(f)[0].split("_"), os.path.join(train_dir, f)) for f in filenames)
         return [(int(p[0][1]), int(p[0][2]), p[1]) for p in interm]
 
-    def get_train_data_generator(self):
-        train = self._get_train_files()
-        return (df for df in ({'cls': t[2], 'df': _get_df(t[3])} for t in train) if df['df'] is not None), len(train)
+    def random_train_sample(self, cls):
+        import random
+        train = [t for t in self._get_train_files() if t[2] == cls]
+        return {'cls': cls, **_get_df(random.choice(train)[3])}
 
-    def get_test_data_generator(self):
+    def train_samples_for_cls(self, cls):
+        """
+        get train samples for particular seizure stage class
+        """
+        train = [t for t in self._get_train_files() if t[2] == cls]
+        all_samples = ({'cls': t[2], **_get_df(t[3])} for t in train)
+        return (sample for sample in all_samples if sample['signals'] is not None), len(train)
+
+    def train_samples(self):
+        train = self._get_train_files()
+        all_samples = ({'cls': t[2], **_get_df(t[3])} for t in train)
+        return (sample for sample in all_samples if sample['signals'] is not None), len(train)
+
+    def test_samples(self):
         test = self._get_test_files()
-        return (d for d in ({'mat_name': os.path.split(t[2])[1], 'df': _get_df(t[2])} for t in test)
-                if d['df'] is not None), len(test)
+        all_samples = ({'mat_name': os.path.split(t[2])[1], **_get_df(t[2])} for t in test)
+        return (sample for sample in all_samples if sample['signals'] is not None), len(test)
+
+
