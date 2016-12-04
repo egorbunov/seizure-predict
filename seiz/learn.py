@@ -1,11 +1,9 @@
-from seiz.feature_io import FeatureIO
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import StratifiedKFold
+from collections import Counter
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 import pandas as pd
-from collections import Counter
 
 
 class SegmentedOnePatientModel:
@@ -19,8 +17,17 @@ class SegmentedOnePatientModel:
             n_jobs=8,
             bootstrap=False
         )
-        self.train_data = self.feature_io.read(patient=patient_no, which="train", segment_size=segment_size)
-        self.test_data = self.feature_io.read(patient=patient_no, which="test", segment_size=segment_size)
+        train_features_lst = self.feature_io.read(patient=patient_no,
+                                                  which="train",
+                                                  segment_size=segment_size)
+        self.train_data = pd.DataFrame(train_features_lst)
+        self.train_data[self.cls_col] = self.train_data[self.cls_col].astype('category')
+
+        test_features_lst = self.feature_io.read(patient=patient_no,
+                                                 which="test",
+                                                 segment_size=segment_size)
+        self.test_data = pd.DataFrame(test_features_lst)
+
         self.all_feature_names = self.train_data.drop(self.cls_col, axis=1).columns
         self.feature_names = self.train_data.drop(self.cls_col, axis=1).columns
 

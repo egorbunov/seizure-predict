@@ -1,10 +1,9 @@
-import pandas as pd
 from scipy.io import loadmat
 import os
 import numpy as np
 
 
-def _get_df(mat_file_name):
+def _read_mat_data(mat_file_name):
     """
     Returns dict with keys:
         * signals -- electrode signals pandas dataframe
@@ -17,7 +16,8 @@ def _get_df(mat_file_name):
         return {'signals': None, 'sampling_rate': None}
     names = mat['dataStruct'].dtype.names
     n_data = {n: mat['dataStruct'][n][0, 0] for n in names}
-    return {'signals': pd.DataFrame(n_data['data'], columns=n_data['channelIndices'][0]),
+    return {'signals': n_data['data'],
+            'column_names': n_data['channelIndices'][0],
             'sampling_rate': mat['dataStruct']['iEEGsamplingRate'][0, 0][0, 0]}
 
 
@@ -49,24 +49,24 @@ class MatPatientDataReader:
     def random_train_sample(self, cls):
         import random
         train = [t for t in self._get_train_files() if t[2] == cls]
-        return {'cls': cls, **_get_df(random.choice(train)[3])}
+        return {'cls': cls, **_read_mat_data(random.choice(train)[3])}
 
     def train_samples_for_cls(self, cls):
         """
         get train samples for particular seizure stage class
         """
         train = [t for t in self._get_train_files() if t[2] == cls]
-        all_samples = ({'cls': t[2], **_get_df(t[3])} for t in train)
+        all_samples = ({'cls': t[2], **_read_mat_data(t[3])} for t in train)
         return (sample for sample in all_samples if sample['signals'] is not None), len(train)
 
     def train_samples(self):
         train = self._get_train_files()
-        all_samples = ({'cls': t[2], **_get_df(t[3])} for t in train)
+        all_samples = ({'cls': t[2], **_read_mat_data(t[3])} for t in train)
         return (sample for sample in all_samples if sample['signals'] is not None), len(train)
 
     def test_samples(self):
         test = self._get_test_files()
-        all_samples = ({'mat_name': os.path.split(t[2])[1], **_get_df(t[2])} for t in test)
+        all_samples = ({'mat_name': os.path.split(t[2])[1], **_read_mat_data(t[2])} for t in test)
         return (sample for sample in all_samples if sample['signals'] is not None), len(test)
 
 

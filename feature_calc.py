@@ -14,17 +14,15 @@ def calc_one_patient(patient_no, train=True, test=True):
     fc = SegmentedFeatureCalculator(data_reader)
     fio = FeatureIO(feat_dir)
     if train:
-        for seg_len in [1, 2, 4, 5, 6, 10]:
-            print("Calculating train features, segment len = {}".format(seg_len))
+        for seg_len in [2, 4, 5, 10]:
+            print("Calculating and writing train features (segment len = {})...".format(seg_len))
             features_train = fc.calc_train_features(seg_len)
-            print("Writing...")
             fio.write(features_train)
         print("OK")
     if test:
-        for seg_len in [1, 2, 4, 5, 6, 10]:
-            print("Calculating train features, segment len = {}".format(seg_len))
+        for seg_len in [2, 4, 5, 10]:
+            print("Calculating and writing test features (segment len = {})...".format(seg_len))
             features_test = fc.calc_test_features(seg_len)
-            print("Writing...")
             fio.write(features_test)
         print("OK")
 

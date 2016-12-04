@@ -1,7 +1,5 @@
 import pickle
 import os
-import pandas as pd
-
 
 class FeatureIO:
     def __init__(self, feature_base_dir):
@@ -22,6 +20,7 @@ class FeatureIO:
         :param patient: patient no
         :return: pandas data frame
         """
+
         if which == "train":
             feat_file = self.feature_train_dir
         elif which == "test":
@@ -32,9 +31,14 @@ class FeatureIO:
         if segment_size is not None:
             feat_file = os.path.join(feat_file, "{}".format(segment_size))
         train_feature_file = os.path.join(feat_file, "{}.pcl".format(patient))
+        features = []
         with open(train_feature_file, 'rb') as f:
-            feature_df = pickle.load(f)
-            return feature_df
+            while True:
+                try:
+                    features.append(pickle.load(f))
+                except (EOFError, pickle.PickleError, pickle.UnpicklingError) as e:
+                    break
+            return features
 
     def write(self, features):
         """
@@ -43,7 +47,7 @@ class FeatureIO:
         """
         segment_size = features['segment_size']
         patient = features['patient']
-        df = features['features']
+        features_gen = features['features']
         which = features['which']
 
         if which == "train":
@@ -53,9 +57,10 @@ class FeatureIO:
         else:
             raise KeyError("which may be train or test")
 
-        base_dir = os.path.join(base, segment_size)
+        base_dir = os.path.join(base, "{}".format(segment_size))
         if not os.path.exists(base_dir):
             os.makedirs(base_dir)
         feat_file = os.path.join(base_dir, "{}.pcl".format(patient))
         with open(feat_file, 'wb') as f:
-            pickle.dump(df, f)
+            for feature in features_gen:
+                pickle.dump(feature, f)
