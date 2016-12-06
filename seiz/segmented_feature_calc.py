@@ -2,6 +2,7 @@ import numpy as np
 import scipy.signal
 import sklearn.preprocessing
 from tqdm import tqdm
+from scipy.stats import spearmanr
 
 
 class SegmentedFeatureCalculator:
@@ -19,13 +20,14 @@ class SegmentedFeatureCalculator:
         """
         def get_features(sample, prefix):
             scaled = sklearn.preprocessing.scale(sample, axis=0)
-            corr_mat = np.corrcoef(scaled)
+            corr_mat = spearmanr(scaled, axis=1)[0]
             feature_dict = {}
             for i in range(corr_mat.shape[0]):
                 for j in range(i + 1, corr_mat.shape[1]):
                     feature_dict['{}_spatial_corr_{}_{}'.format(prefix, i, j)] = corr_mat[i, j]
             try:
                 eigenvalues = np.absolute(np.linalg.eig(corr_mat)[0])
+                eigenvalues.sort()
                 for i in range(len(eigenvalues)):
                     feature_dict['{}_corr_eig_{}'.format(prefix, i)] = eigenvalues[i]
             except np.linalg.LinAlgError as e:
@@ -45,17 +47,17 @@ class SegmentedFeatureCalculator:
 
     @staticmethod
     def _features_from_one_sample(big_sample, additional_info, segment_len):
-        n_first_freq = 50
+        n_first_freq = 47
         signals = big_sample['signals']
         rate = big_sample['sampling_rate']
         # list of shape (split num, electrodes num, segment_len * rate)
         time_split = np.split(signals.T, signals.shape[0] / (rate * segment_len), axis=1)
-        resampled_time_split = scipy.signal.resample(time_split,
-                                                     num=min(400, np.shape(time_split)[2]),
-                                                     axis=2)
+        # resampled_time_split = scipy.signal.resample(time_split,
+        #                                              num=min(400, np.shape(time_split)[2]),
+        #                                              axis=2)
         # for frequency domain features
         fft_split = np.fft.rfft(time_split, axis=2)[:, :, :n_first_freq]
-        for spat, freq in zip(resampled_time_split, fft_split):
+        for spat, freq in zip(time_split, fft_split):
             features = SegmentedFeatureCalculator._calc_small_sample(spat, freq)
             if features is None:
                 continue

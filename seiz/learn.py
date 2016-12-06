@@ -6,48 +6,48 @@ from tqdm import tqdm
 import pandas as pd
 
 
-class SegmentedOnePatientModel:
-    def __init__(self, feature_io, patient_no, number_of_trees=100, segment_size=None):
+class SegmentedOnePatientModelWrapper:
+    def __init__(self, feature_io, patient_no, number_of_trees=100, segment_size=None, rfc_model=None):
         self.patient_no = patient_no
+        self.segment_size = segment_size
         self.feature_io = feature_io
         self.cls_col = '#cls'
         self.mat_name_col = '#mat_name'
-        self.model = RandomForestClassifier(
-            n_estimators=number_of_trees,
-            n_jobs=8,
-            bootstrap=False
-        )
-        train_features_lst = self.feature_io.read(patient=patient_no,
+        if rfc_model is None:
+            self.model = RandomForestClassifier(
+                n_estimators=number_of_trees,
+                n_jobs=17
+            )
+        else:
+            self.model = rfc_model
+        self.train_data = None
+        self.test_data = None
+        self.all_feature_names = None
+        self.feature_names = None
+
+    def _read_train(self):
+        if self.train_data is not None:
+            return
+        train_features_lst = self.feature_io.read(patient=self.patient_no,
                                                   which="train",
-                                                  segment_size=segment_size)
+                                                  segment_size=self.segment_size)
         self.train_data = pd.DataFrame(train_features_lst)
         self.train_data[self.cls_col] = self.train_data[self.cls_col].astype('category')
-
-        test_features_lst = self.feature_io.read(patient=patient_no,
-                                                 which="test",
-                                                 segment_size=segment_size)
-        self.test_data = pd.DataFrame(test_features_lst)
-
         self.all_feature_names = self.train_data.drop(self.cls_col, axis=1).columns
         self.feature_names = self.train_data.drop(self.cls_col, axis=1).columns
 
-    def do_importance_feature_selection(self):
-        print("Patient: {}".format(self.patient_no))
-        self.feature_names = self.all_feature_names
-        max_score = 0
-        while True:
-            print("Feature cnt: {}".format(len(self.feature_names)))
-            score, importance = self.do_cross_validation()
-            if score > max_score:
-                max_score = score
-                print("Gor score: {}".format(score))
-                min_idx = importance.argmin()
-                self.feature_names = np.delete(self.feature_names, min_idx)
-            else:
-                break
-        return self.feature_names
+    def _read_test(self):
+        if self.test_data is not None:
+            return
+        test_features_lst = self.feature_io.read(patient=self.patient_no,
+                                                 which="test",
+                                                 segment_size=self.segment_size)
+        self.test_data = pd.DataFrame(test_features_lst)
+        self.all_feature_names = self.test_data.drop(self.mat_name_col, axis=1).columns
+        self.feature_names = self.test_data.drop(self.mat_name_col, axis=1).columns
 
     def do_bf_feature_selection(self):
+        self._read_train()
         print("Processing patient {}".format(self.patient_no))
         f_num = 5
         n = 100
@@ -69,6 +69,7 @@ class SegmentedOnePatientModel:
         self.feature_names = best_params
 
     def do_cross_validation(self, n_splits=10):
+        self._read_train()
         skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
         features = self.train_data[self.feature_names].as_matrix()
         answers = self.train_data[self.cls_col].as_matrix()
@@ -88,6 +89,7 @@ class SegmentedOnePatientModel:
         return np.mean(scores), np.mean(imps, axis=0)
 
     def train(self):
+        self._read_train()
         """
         build patient models
         """
@@ -102,18 +104,19 @@ class SegmentedOnePatientModel:
         return self.model
 
     def evaluate(self):
+        self._read_test()
+        one_class_idx = 0 if self.model.classes_[0] == 1 else 1
         # reading test features
         mat_names = self.test_data['#mat_name'].unique()
-        ones = 0
+        result = []
         for mat_name in tqdm(mat_names):
             one_sample_segments = self.test_data.loc[self.test_data[self.mat_name_col] == mat_name]
             features = one_sample_segments[self.feature_names]
             self.model.verbose = 0
-            answers = self.model.predict(features)
-
-            cntr = Counter(answers)
-            print(cntr)
-            if cntr.get(1, 0) > 0:
-                ones += 1
-        print("all: {}".format(len(mat_names)))
-        print("1  : {}".format(ones))
+            classes_probs = self.model.predict_proba(features)
+            one_class_probs = classes_probs[:, one_class_idx]
+            sum_prob = np.sum(one_class_probs) / len(one_class_probs)
+            ans = {'File': mat_name, 'Class': sum_prob}
+            print(ans)
+            result.append(ans)
+        return result

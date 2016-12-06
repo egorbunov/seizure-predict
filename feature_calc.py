@@ -9,18 +9,18 @@ matplotlib.use("Agg")
 
 
 def calc_one_patient(patient_no, train=True, test=True):
-    feat_dir = "../data/seg_features_4"
+    feat_dir = "../data/seg_features_5"
     data_reader = MatPatientDataReader(patient_no=patient_no, data_dir="../data")
     fc = SegmentedFeatureCalculator(data_reader)
     fio = FeatureIO(feat_dir)
     if train:
-        for seg_len in [2, 4, 5, 10]:
+        for seg_len in [5]:
             print("Calculating and writing train features (segment len = {})...".format(seg_len))
             features_train = fc.calc_train_features(seg_len)
             fio.write(features_train)
         print("OK")
     if test:
-        for seg_len in [2, 4, 5, 10]:
+        for seg_len in [5]:
             print("Calculating and writing test features (segment len = {})...".format(seg_len))
             features_test = fc.calc_test_features(seg_len)
             fio.write(features_test)

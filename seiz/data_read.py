@@ -26,7 +26,7 @@ class MatPatientDataReader:
         self.data_dir = data_dir
         self.patient_no = patient_no
 
-    def _get_train_files(self):
+    def get_train_files(self):
         """
         returns array of tuples (patient_no, train_data_idx, seiz_stage_class, path_to_mat_file)
         for given patient number
@@ -36,7 +36,7 @@ class MatPatientDataReader:
         interm = ((os.path.splitext(f)[0].split("_"), os.path.join(train_dir, f)) for f in filenames)
         return [(int(p[0][0]), int(p[0][1]), int(p[0][2]), p[1]) for p in interm]
 
-    def _get_test_files(self):
+    def get_test_files(self):
         """
         returns array of tuples (patient_no, train_data_idx, path_to_mat_file)
         for given patient number
@@ -48,25 +48,23 @@ class MatPatientDataReader:
 
     def random_train_sample(self, cls):
         import random
-        train = [t for t in self._get_train_files() if t[2] == cls]
+        train = [t for t in self.get_train_files() if t[2] == cls]
         return {'cls': cls, **_read_mat_data(random.choice(train)[3])}
 
     def train_samples_for_cls(self, cls):
         """
         get train samples for particular seizure stage class
         """
-        train = [t for t in self._get_train_files() if t[2] == cls]
+        train = [t for t in self.get_train_files() if t[2] == cls]
         all_samples = ({'cls': t[2], **_read_mat_data(t[3])} for t in train)
         return (sample for sample in all_samples if sample['signals'] is not None), len(train)
 
     def train_samples(self):
-        train = self._get_train_files()
+        train = self.get_train_files()
         all_samples = ({'cls': t[2], **_read_mat_data(t[3])} for t in train)
         return (sample for sample in all_samples if sample['signals'] is not None), len(train)
 
     def test_samples(self):
-        test = self._get_test_files()
+        test = self.get_test_files()
         all_samples = ({'mat_name': os.path.split(t[2])[1], **_read_mat_data(t[2])} for t in test)
         return (sample for sample in all_samples if sample['signals'] is not None), len(test)
-
-
