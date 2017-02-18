@@ -115,7 +115,7 @@ class SegmentedOnePatientModelWrapper:
             self.model.verbose = 0
             classes_probs = self.model.predict_proba(features)
             one_class_probs = classes_probs[:, one_class_idx]
-            sum_prob = np.sum(one_class_probs) / len(one_class_probs)
+            sum_prob = np.median(one_class_probs)
             ans = {'File': mat_name, 'Class': sum_prob}
             print(ans)
             result.append(ans)

@@ -12,14 +12,14 @@ import gc
 matplotlib.use("Agg")
 
 models_dir = "../models"
-fr = FeatureIO("../data/seg_features_4")
+fr = FeatureIO("../data/seg_features_5")
 
 
-def get_model_path(patient, segment_size, tree_num):
+def get_model_path(patient, segment_size, tree_num, tag):
     path = os.path.join(models_dir, str(segment_size), str(tree_num))
     if not os.path.exists(path):
         os.makedirs(path)
-    return os.path.join(path, "{}.pcl".format(patient))
+    return os.path.join(path, "{}_{}.pcl".format(tag, patient))
 
 
 def get_baseline_submission():
@@ -34,8 +34,8 @@ def get_baseline_submission():
     return submission
 
 
-def train_and_save(patient, segment_size, tree_num):
-    model_path = get_model_path(patient, segment_size, tree_num)
+def train_and_save(patient, segment_size, tree_num, tag):
+    model_path = get_model_path(patient, segment_size, tree_num, tag)
     print("Model will be saved at: " + model_path)
     model = SegmentedOnePatientModelWrapper(
         fr,
@@ -49,17 +49,8 @@ def train_and_save(patient, segment_size, tree_num):
         pickle.dump(rfc_model, f)
 
 
-def train_and_save_all():
-    train_and_save(patient=1, segment_size=2, tree_num=2000)
-    gc.collect()
-    train_and_save(patient=2, segment_size=2, tree_num=2000)
-    gc.collect()
-    train_and_save(patient=3, segment_size=2, tree_num=2000)
-    gc.collect()
-
-
-def evaluate_patient(patient, segment_size, tree_num):
-    model_path = get_model_path(patient, segment_size, tree_num)
+def evaluate_patient(patient, segment_size, tree_num, tag):
+    model_path = get_model_path(patient, segment_size, tree_num, tag)
     print("Reading model {}...".format(model_path))
     with open(model_path, 'rb') as f:
         rfc_model = pickle.load(f)
@@ -73,16 +64,16 @@ def evaluate_patient(patient, segment_size, tree_num):
     return model.evaluate()
 
 
-def calculate_raw_probs(segement_size, tree_num):
+def calculate_raw_probs(segement_sizes, tree_nums, tag):
     submission = get_baseline_submission()
     print("Evaluating patient 1...")
-    res_1 = evaluate_patient(1, segment_size=2, tree_num=tree_num)
+    res_1 = evaluate_patient(1, segment_size=segement_sizes[0], tree_num=tree_nums[0], tag=tag)
     gc.collect()
     print("Evaluating patient 2...")
-    res_2 = evaluate_patient(2, segment_size=segement_size, tree_num=tree_num)
+    res_2 = evaluate_patient(2, segment_size=segement_sizes[1], tree_num=tree_nums[1], tag=tag)
     gc.collect()
     print("Evaluating patient 3...")
-    res_3 = evaluate_patient(3, segment_size=segement_size, tree_num=tree_num)
+    res_3 = evaluate_patient(3, segment_size=segement_sizes[2], tree_num=tree_nums[2], tag=tag)
     gc.collect()
 
     for x in res_1:
@@ -98,16 +89,16 @@ def calculate_raw_probs(segement_size, tree_num):
 
     df = pd.DataFrame(fin_submission)
 
-    with open(os.path.join("probs", "probs_{}_{}".format(segement_size, tree_num)), 'wb') as f:
+    with open(os.path.join("probs", "probs_{}.pcl".format(tag)), 'wb') as f:
         pickle.dump(df, f)
 
 
-def create_submissions(segement_size=5, tree_num=2000):
-    with open(os.path.join("probs", "probs_{}_{}".format(segement_size, tree_num)), 'rb') as f:
+def create_submissions(tag):
+    with open(os.path.join("probs", "probs_{}.pcl".format(tag)), 'rb') as f:
         df = pickle.load(f)
         df.to_csv(os.path.join("submissions",
-                               "submission_{}_{}_{}.csv"
-                               .format(segement_size, tree_num, str(datetime.now()).replace(' ', '_'))),
+                               "submission_{}_{}.csv"
+                               .format(tag, str(datetime.now()).replace(' ', '_'))),
                   index=False,
                   columns=["File", "Class"])
 
@@ -115,6 +106,18 @@ def create_submissions(segement_size=5, tree_num=2000):
 # calculate_raw_probs(segement_size=5, tree_num=700)
 # create_submissions(segement_size=5, tree_num=700)
 
-# train_and_save(patient=1, segment_size=2, tree_num=700)
-# train_and_save(patient=2, segment_size=5, tree_num=700)
-# train_and_save(patient=3, segment_size=5, tree_num=700)
+def main():
+    tag = "5_2100_fet5"
+
+    # train_and_save(patient=1, segment_size=5, tree_num=2100, tag=tag)
+    # gc.collect()
+    # train_and_save(patient=2, segment_size=5, tree_num=21, tag=tag)
+    # gc.collect()
+    # train_and_save(patient=3, segment_size=5, tree_num=1000, tag=tag)
+    # gc.collect()
+
+    calculate_raw_probs(segement_sizes=[5, 5, 5], tree_nums=[2100, 2100, 2100], tag=tag)
+    create_submissions(tag=tag)
+
+
+main()
